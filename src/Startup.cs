@@ -60,11 +60,7 @@ namespace MedPark.Notifications
             app.UseRouting();
 
             //app.UseRabbitMq();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
+            app.UseMvcWithDefaultRoute();
         }
     }
 }
