@@ -5,7 +5,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Autofac;
 using AutoMapper;
+using Consul;
 using MedPark.Common;
+using MedPark.Common.Consul;
 using MedPark.Common.RabbitMq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -32,6 +34,8 @@ namespace MedPark.Notifications
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddAutoMapper(typeof(Startup));
+            services.AddHealthChecks();
+            services.AddConsul();
 
             //Add DBContext
             services.AddDbContext<NotificationsDbContext>(options => options.UseSqlServer(Configuration["Database:ConnectionString"]));
@@ -48,7 +52,7 @@ namespace MedPark.Notifications
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime, IConsulClient consulClient)
         {
             if (env.IsDevelopment())
             {
@@ -58,6 +62,16 @@ namespace MedPark.Notifications
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            app.UseEndpoints(endpoit =>
+            {
+                endpoit.MapHealthChecks("/health");
+            });
+
+            var serviceID = app.UseConsul();
+            lifetime.ApplicationStopped.Register(() =>
+            {
+                consulClient.Agent.ServiceDeregister(serviceID);
+            });
 
             //app.UseRabbitMq();
             app.UseMvcWithDefaultRoute();
